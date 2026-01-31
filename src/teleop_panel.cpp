@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QPushButton>
 #include <QSizePolicy>
 #include <QTimer>
@@ -474,8 +475,228 @@ void KeyJoyPanel::mousePressEvent(QMouseEvent * event)
   rviz_common::Panel::mousePressEvent(event);
 }
 
+JoystickWidget::JoystickWidget(QWidget * parent)
+: QWidget(parent)
+{
+  setMouseTracking(true);
+  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+  knob_pos_ = QPointF(0.0, 0.0);
+}
+
+QSize JoystickWidget::minimumSizeHint() const
+{
+  return QSize(160, 160);
+}
+
+QRectF JoystickWidget::drawRect() const
+{
+  const int margin = 12;
+  return QRectF(margin, margin, width() - 2 * margin, height() - 2 * margin);
+}
+
+void JoystickWidget::paintEvent(QPaintEvent * event)
+{
+  Q_UNUSED(event);
+  QPainter painter(this);
+  painter.setRenderHint(QPainter::Antialiasing, true);
+
+  const QRectF rect = drawRect();
+  const QPointF center = rect.center();
+  const QPointF knob_center = center + knob_pos_;
+
+  painter.setPen(QPen(QColor(60, 60, 60), 2));
+  painter.setBrush(QColor(245, 245, 245));
+  painter.drawRoundedRect(rect, 8.0, 8.0);
+
+  painter.setPen(QPen(QColor(120, 120, 120), 1));
+  painter.drawLine(QPointF(rect.left(), center.y()), QPointF(rect.right(), center.y()));
+  painter.drawLine(QPointF(center.x(), rect.top()), QPointF(center.x(), rect.bottom()));
+
+  const qreal knob_radius = std::min(rect.width(), rect.height()) * 0.12;
+  painter.setPen(QPen(QColor(40, 40, 40), 2));
+  painter.setBrush(dragging_ ? QColor(80, 160, 220) : QColor(220, 220, 220));
+  painter.drawEllipse(knob_center, knob_radius, knob_radius);
+}
+
+void JoystickWidget::mousePressEvent(QMouseEvent * event)
+{
+  if (!event || event->button() != Qt::LeftButton) {
+    QWidget::mousePressEvent(event);
+    return;
+  }
+
+  updateKnobPosition(QPointF(event->pos()), true);
+}
+
+void JoystickWidget::mouseMoveEvent(QMouseEvent * event)
+{
+  if (!event) {
+    QWidget::mouseMoveEvent(event);
+    return;
+  }
+
+  if (!dragging_) {
+    QWidget::mouseMoveEvent(event);
+    return;
+  }
+
+  updateKnobPosition(QPointF(event->pos()), true);
+}
+
+void JoystickWidget::mouseReleaseEvent(QMouseEvent * event)
+{
+  if (!event || event->button() != Qt::LeftButton) {
+    QWidget::mouseReleaseEvent(event);
+    return;
+  }
+
+  updateKnobPosition(drawRect().center(), false);
+}
+
+void JoystickWidget::updateKnobPosition(const QPointF & position, bool dragging)
+{
+  const QRectF rect = drawRect();
+  const QPointF center = rect.center();
+  const QPointF rel = position - center;
+  const qreal half_w = rect.width() * 0.5;
+  const qreal half_h = rect.height() * 0.5;
+
+  const qreal clamped_x = std::clamp(rel.x(), -half_w, half_w);
+  const qreal clamped_y = std::clamp(rel.y(), -half_h, half_h);
+
+  knob_pos_ = QPointF(clamped_x, clamped_y);
+  dragging_ = dragging;
+
+  axis_x_ = static_cast<float>(clamped_x / half_w);
+  axis_y_ = static_cast<float>(-clamped_y / half_h);
+
+  emit axisChanged(axis_x_, axis_y_, dragging_);
+  update();
+}
+
+ScreenJoyPanel::ScreenJoyPanel(QWidget * parent)
+: rviz_common::Panel(parent)
+{
+  main_layout_ = new QVBoxLayout();
+  main_layout_->setContentsMargins(6, 6, 6, 6);
+
+  auto * topic_row = new QHBoxLayout();
+  topic_row->addWidget(new QLabel("Topic"));
+  topic_edit_ = new QLineEdit(QString::fromStdString(topic_));
+  topic_row->addWidget(topic_edit_);
+  main_layout_->addLayout(topic_row);
+
+  auto * rate_row = new QHBoxLayout();
+  rate_row->addWidget(new QLabel("Publish rate (Hz)"));
+  publish_rate_spin_ = new QDoubleSpinBox();
+  publish_rate_spin_->setRange(1.0, 100.0);
+  publish_rate_spin_->setDecimals(1);
+  publish_rate_spin_->setSingleStep(1.0);
+  publish_rate_spin_->setValue(publish_rate_hz_);
+  rate_row->addWidget(publish_rate_spin_);
+  main_layout_->addLayout(rate_row);
+
+  joystick_ = new JoystickWidget();
+  main_layout_->addWidget(joystick_, 1);
+
+  status_label_ = new QLabel("Drag the knob to publish /joy axes");
+  main_layout_->addWidget(status_label_);
+
+  setLayout(main_layout_);
+
+  connect(topic_edit_, &QLineEdit::editingFinished, this, [this]() {
+    const auto trimmed = topic_edit_->text().trimmed();
+    topic_ = trimmed.isEmpty() ? std::string("/joy") : trimmed.toStdString();
+    topic_edit_->setText(QString::fromStdString(topic_));
+    updatePublisher();
+  });
+
+  connect(publish_rate_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) {
+    publish_rate_hz_ = value;
+    updatePublishRate();
+  });
+
+  connect(joystick_, &JoystickWidget::axisChanged, this, &ScreenJoyPanel::onAxisChanged);
+
+  publish_timer_ = new QTimer(this);
+  connect(publish_timer_, &QTimer::timeout, this, &ScreenJoyPanel::publishCurrent);
+  updatePublishRate();
+
+  last_msg_.axes = {0.0f, 0.0f};
+}
+
+void ScreenJoyPanel::onInitialize()
+{
+  auto ros_node = getDisplayContext()->getRosNodeAbstraction().lock();
+  if (ros_node) {
+    node_ = ros_node->get_raw_node();
+  }
+  updatePublisher();
+}
+
+void ScreenJoyPanel::onAxisChanged(float axis_x, float axis_y, bool dragging)
+{
+  setCommand(axis_x, axis_y, dragging);
+}
+
+void ScreenJoyPanel::updatePublisher()
+{
+  if (!node_) {
+    return;
+  }
+
+  publisher_ = node_->create_publisher<sensor_msgs::msg::Joy>(topic_, rclcpp::QoS(10));
+}
+
+void ScreenJoyPanel::publishCurrent()
+{
+  if (!publisher_) {
+    return;
+  }
+
+  if (node_) {
+    last_msg_.header.stamp = node_->now();
+  }
+  publisher_->publish(last_msg_);
+}
+
+void ScreenJoyPanel::updatePublishRate()
+{
+  if (!publish_timer_) {
+    return;
+  }
+
+  const double clamped = std::max(1.0, publish_rate_hz_);
+  const int interval_ms = static_cast<int>(1000.0 / clamped);
+  publish_timer_->setInterval(interval_ms);
+  publish_timer_->start();
+}
+
+void ScreenJoyPanel::setCommand(float axis_x, float axis_y, bool dragging)
+{
+  dragging_ = dragging;
+  last_msg_ = sensor_msgs::msg::Joy();
+  last_msg_.axes = {axis_x, axis_y};
+  updateStatusLabel();
+}
+
+void ScreenJoyPanel::updateStatusLabel()
+{
+  if (!status_label_) {
+    return;
+  }
+
+  const float axis0 = last_msg_.axes.size() > 0 ? last_msg_.axes[0] : 0.0f;
+  const float axis1 = last_msg_.axes.size() > 1 ? last_msg_.axes[1] : 0.0f;
+  status_label_->setText(QString("axis[0]: %1  axis[1]: %2  dragging: %3")
+    .arg(axis0, 0, 'f', 2)
+    .arg(axis1, 0, 'f', 2)
+    .arg(dragging_ ? "yes" : "no"));
+}
+
 }  // namespace rviz2_teleop_plugin
 
 PLUGINLIB_EXPORT_CLASS(rviz2_teleop_plugin::KeyTeleopPanel, rviz_common::Panel)
 PLUGINLIB_EXPORT_CLASS(rviz2_teleop_plugin::PadTeleopPanel, rviz_common::Panel)
 PLUGINLIB_EXPORT_CLASS(rviz2_teleop_plugin::KeyJoyPanel, rviz_common::Panel)
+PLUGINLIB_EXPORT_CLASS(rviz2_teleop_plugin::ScreenJoyPanel, rviz_common::Panel)

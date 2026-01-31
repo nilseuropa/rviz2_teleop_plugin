@@ -17,4 +17,10 @@
     base_class_type="rviz_common::Panel">
     <description>Keyboard teleop panel that publishes normalized sensor_msgs/Joy axes from arrow keys.</description>
   </class>
+  <class
+    name="rviz2_teleop_plugin/ScreenJoyPanel"
+    type="rviz2_teleop_plugin::ScreenJoyPanel"
+    base_class_type="rviz_common::Panel">
+    <description>On-screen joystick panel that publishes normalized sensor_msgs/Joy axes.</description>
+  </class>
 </library>

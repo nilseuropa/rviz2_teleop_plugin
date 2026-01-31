@@ -20,6 +20,7 @@ class QTimer;
 class QPushButton;
 class QVBoxLayout;
 class QGridLayout;
+class QPaintEvent;
 
 namespace rviz2_teleop_plugin
 {
@@ -131,6 +132,70 @@ private:
   bool down_pressed_ = false;
   bool left_pressed_ = false;
   bool right_pressed_ = false;
+};
+
+class JoystickWidget : public QWidget
+{
+  Q_OBJECT
+
+public:
+  explicit JoystickWidget(QWidget * parent = nullptr);
+
+  QSize minimumSizeHint() const override;
+
+signals:
+  void axisChanged(float axis_x, float axis_y, bool dragging);
+
+protected:
+  void paintEvent(QPaintEvent * event) override;
+  void mousePressEvent(QMouseEvent * event) override;
+  void mouseMoveEvent(QMouseEvent * event) override;
+  void mouseReleaseEvent(QMouseEvent * event) override;
+
+private:
+  void updateKnobPosition(const QPointF & position, bool dragging);
+  QRectF drawRect() const;
+
+  QPointF knob_pos_;
+  bool dragging_ = false;
+  float axis_x_ = 0.0f;
+  float axis_y_ = 0.0f;
+};
+
+class ScreenJoyPanel : public rviz_common::Panel
+{
+  Q_OBJECT
+
+public:
+  explicit ScreenJoyPanel(QWidget * parent = nullptr);
+
+  void onInitialize() override;
+
+private slots:
+  void onAxisChanged(float axis_x, float axis_y, bool dragging);
+
+private:
+  void updatePublisher();
+  void publishCurrent();
+  void updatePublishRate();
+  void updateStatusLabel();
+  void setCommand(float axis_x, float axis_y, bool dragging);
+
+  QVBoxLayout * main_layout_{};
+  QLineEdit * topic_edit_{};
+  QDoubleSpinBox * publish_rate_spin_{};
+  QLabel * status_label_{};
+  QTimer * publish_timer_{};
+  JoystickWidget * joystick_{};
+
+  rclcpp::Node::SharedPtr node_;
+  rclcpp::Publisher<sensor_msgs::msg::Joy>::SharedPtr publisher_;
+
+  std::string topic_ = "/joy";
+  double publish_rate_hz_ = 10.0;
+  bool dragging_ = false;
+
+  sensor_msgs::msg::Joy last_msg_{};
 };
 
 }  // namespace rviz2_teleop_plugin

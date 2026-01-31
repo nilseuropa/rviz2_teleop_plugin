@@ -17,6 +17,7 @@ find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
 add_library(rviz2_teleop_plugin SHARED
   src/teleop_panel.cpp
+  include/rviz2_teleop_plugin/teleop_panel.hpp
 )
 
 target_include_directories(rviz2_teleop_plugin PUBLIC
