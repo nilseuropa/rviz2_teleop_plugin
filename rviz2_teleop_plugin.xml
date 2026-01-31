@@ -1,0 +1,8 @@
+<library path="rviz2_teleop_plugin">
+  <class
+    name="rviz2_teleop_plugin/TeleopPanel"
+    type="rviz2_teleop_plugin::TeleopPanel"
+    base_class_type="rviz_common::Panel">
+    <description>Keyboard teleop panel that publishes geometry_msgs/Twist from arrow keys.</description>
+  </class>
+</library>
