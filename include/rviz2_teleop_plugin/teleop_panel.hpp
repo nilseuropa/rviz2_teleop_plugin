@@ -16,29 +16,29 @@ class QKeyEvent;
 class QMouseEvent;
 class QLabel;
 class QTimer;
+class QPushButton;
+class QVBoxLayout;
+class QGridLayout;
 
 namespace rviz2_teleop_plugin
 {
 
-class TeleopPanel : public rviz_common::Panel
+class TeleopPanelBase : public rviz_common::Panel
 {
 public:
-  explicit TeleopPanel(QWidget * parent = nullptr);
+  explicit TeleopPanelBase(QWidget * parent = nullptr);
 
   void onInitialize() override;
 
 protected:
-  void keyPressEvent(QKeyEvent * event) override;
-  void keyReleaseEvent(QKeyEvent * event) override;
-  void mousePressEvent(QMouseEvent * event) override;
-
-private:
   void updatePublisher();
-  void updateFromKeys();
   void publishCurrent();
   void updatePublishRate();
   void updateStatusLabel();
+  void setCommand(double linear, double angular);
+  virtual void refreshCommandFromInput() = 0;
 
+  QVBoxLayout * main_layout_{};
   QLineEdit * topic_edit_{};
   QDoubleSpinBox * max_linear_spin_{};
   QDoubleSpinBox * max_angular_spin_{};
@@ -54,12 +54,42 @@ private:
   double max_angular_ = 1.0;
   double publish_rate_hz_ = 10.0;
 
+  geometry_msgs::msg::Twist last_msg_{};
+};
+
+class KeyTeleopPanel : public TeleopPanelBase
+{
+public:
+  explicit KeyTeleopPanel(QWidget * parent = nullptr);
+
+protected:
+  void keyPressEvent(QKeyEvent * event) override;
+  void keyReleaseEvent(QKeyEvent * event) override;
+  void mousePressEvent(QMouseEvent * event) override;
+
+private:
+  void refreshCommandFromInput() override;
+
   bool up_pressed_ = false;
   bool down_pressed_ = false;
   bool left_pressed_ = false;
   bool right_pressed_ = false;
+};
 
-  geometry_msgs::msg::Twist last_msg_{};
+class PadTeleopPanel : public TeleopPanelBase
+{
+public:
+  explicit PadTeleopPanel(QWidget * parent = nullptr);
+
+private:
+  void addPadButton(QGridLayout * grid, int row, int col, const QString & text,
+    double linear, double angular);
+  void clearIfActive(QPushButton * button);
+  void refreshCommandFromInput() override;
+
+  QPushButton * active_button_{};
+  int linear_dir_ = 0;
+  int angular_dir_ = 0;
 };
 
 }  // namespace rviz2_teleop_plugin
