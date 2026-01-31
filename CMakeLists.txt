@@ -12,6 +12,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rviz_common REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(Qt5 REQUIRED COMPONENTS Widgets)
 
 add_library(rviz2_teleop_plugin SHARED
@@ -32,6 +33,7 @@ ament_target_dependencies(rviz2_teleop_plugin
   pluginlib
   rclcpp
   rviz_common
+  sensor_msgs
 )
 
 pluginlib_export_plugin_description_file(rviz_common rviz2_teleop_plugin.xml)

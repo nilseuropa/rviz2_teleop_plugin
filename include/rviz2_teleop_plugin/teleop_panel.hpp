@@ -9,6 +9,7 @@
 #include <geometry_msgs/msg/twist.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <rviz_common/panel.hpp>
+#include <sensor_msgs/msg/joy.hpp>
 
 class QDoubleSpinBox;
 class QLineEdit;
@@ -90,6 +91,46 @@ private:
   QPushButton * active_button_{};
   int linear_dir_ = 0;
   int angular_dir_ = 0;
+};
+
+class KeyJoyPanel : public rviz_common::Panel
+{
+public:
+  explicit KeyJoyPanel(QWidget * parent = nullptr);
+
+  void onInitialize() override;
+
+protected:
+  void keyPressEvent(QKeyEvent * event) override;
+  void keyReleaseEvent(QKeyEvent * event) override;
+  void mousePressEvent(QMouseEvent * event) override;
+
+private:
+  void updatePublisher();
+  void publishCurrent();
+  void updatePublishRate();
+  void updateStatusLabel();
+  void refreshCommandFromInput();
+  void setCommand(double axis_linear, double axis_angular);
+
+  QVBoxLayout * main_layout_{};
+  QLineEdit * topic_edit_{};
+  QDoubleSpinBox * publish_rate_spin_{};
+  QLabel * status_label_{};
+  QTimer * publish_timer_{};
+
+  rclcpp::Node::SharedPtr node_;
+  rclcpp::Publisher<sensor_msgs::msg::Joy>::SharedPtr publisher_;
+
+  std::string topic_ = "/joy";
+  double publish_rate_hz_ = 10.0;
+
+  sensor_msgs::msg::Joy last_msg_{};
+
+  bool up_pressed_ = false;
+  bool down_pressed_ = false;
+  bool left_pressed_ = false;
+  bool right_pressed_ = false;
 };
 
 }  // namespace rviz2_teleop_plugin

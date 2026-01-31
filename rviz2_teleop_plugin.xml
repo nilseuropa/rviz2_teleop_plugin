@@ -11,4 +11,10 @@
     base_class_type="rviz_common::Panel">
     <description>Pad teleop panel with 3x3 directional buttons that publishes geometry_msgs/Twist.</description>
   </class>
+  <class
+    name="rviz2_teleop_plugin/KeyJoyPanel"
+    type="rviz2_teleop_plugin::KeyJoyPanel"
+    base_class_type="rviz_common::Panel">
+    <description>Keyboard teleop panel that publishes normalized sensor_msgs/Joy axes from arrow keys.</description>
+  </class>
 </library>

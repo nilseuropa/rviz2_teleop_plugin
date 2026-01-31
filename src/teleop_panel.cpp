@@ -297,7 +297,185 @@ void PadTeleopPanel::refreshCommandFromInput()
     static_cast<double>(angular_dir_) * max_angular_);
 }
 
+KeyJoyPanel::KeyJoyPanel(QWidget * parent)
+: rviz_common::Panel(parent)
+{
+  main_layout_ = new QVBoxLayout();
+  main_layout_->setContentsMargins(6, 6, 6, 6);
+
+  auto * topic_row = new QHBoxLayout();
+  topic_row->addWidget(new QLabel("Topic"));
+  topic_edit_ = new QLineEdit(QString::fromStdString(topic_));
+  topic_row->addWidget(topic_edit_);
+  main_layout_->addLayout(topic_row);
+
+  auto * rate_row = new QHBoxLayout();
+  rate_row->addWidget(new QLabel("Publish rate (Hz)"));
+  publish_rate_spin_ = new QDoubleSpinBox();
+  publish_rate_spin_->setRange(1.0, 100.0);
+  publish_rate_spin_->setDecimals(1);
+  publish_rate_spin_->setSingleStep(1.0);
+  publish_rate_spin_->setValue(publish_rate_hz_);
+  rate_row->addWidget(publish_rate_spin_);
+  main_layout_->addLayout(rate_row);
+
+  status_label_ = new QLabel("Click here and use arrow keys");
+  main_layout_->addWidget(status_label_);
+
+  setLayout(main_layout_);
+  setFocusPolicy(Qt::StrongFocus);
+
+  connect(topic_edit_, &QLineEdit::editingFinished, this, [this]() {
+    const auto trimmed = topic_edit_->text().trimmed();
+    topic_ = trimmed.isEmpty() ? std::string("/joy") : trimmed.toStdString();
+    topic_edit_->setText(QString::fromStdString(topic_));
+    updatePublisher();
+  });
+
+  connect(publish_rate_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) {
+    publish_rate_hz_ = value;
+    updatePublishRate();
+  });
+
+  publish_timer_ = new QTimer(this);
+  connect(publish_timer_, &QTimer::timeout, this, &KeyJoyPanel::publishCurrent);
+  updatePublishRate();
+  last_msg_.axes = {0.0f, 0.0f};
+}
+
+void KeyJoyPanel::onInitialize()
+{
+  auto ros_node = getDisplayContext()->getRosNodeAbstraction().lock();
+  if (ros_node) {
+    node_ = ros_node->get_raw_node();
+  }
+  updatePublisher();
+}
+
+void KeyJoyPanel::updatePublisher()
+{
+  if (!node_) {
+    return;
+  }
+
+  publisher_ = node_->create_publisher<sensor_msgs::msg::Joy>(topic_, rclcpp::QoS(10));
+}
+
+void KeyJoyPanel::publishCurrent()
+{
+  if (!publisher_) {
+    return;
+  }
+
+  if (node_) {
+    last_msg_.header.stamp = node_->now();
+  }
+  publisher_->publish(last_msg_);
+}
+
+void KeyJoyPanel::updatePublishRate()
+{
+  if (!publish_timer_) {
+    return;
+  }
+
+  const double clamped = std::max(1.0, publish_rate_hz_);
+  const int interval_ms = static_cast<int>(1000.0 / clamped);
+  publish_timer_->setInterval(interval_ms);
+  publish_timer_->start();
+}
+
+void KeyJoyPanel::setCommand(double axis_linear, double axis_angular)
+{
+  last_msg_ = sensor_msgs::msg::Joy();
+  last_msg_.axes = {static_cast<float>(axis_linear), static_cast<float>(axis_angular)};
+  updateStatusLabel();
+}
+
+void KeyJoyPanel::updateStatusLabel()
+{
+  if (!status_label_) {
+    return;
+  }
+
+  const float axis0 = last_msg_.axes.size() > 0 ? last_msg_.axes[0] : 0.0f;
+  const float axis1 = last_msg_.axes.size() > 1 ? last_msg_.axes[1] : 0.0f;
+  status_label_->setText(QString("axis[0]: %1  axis[1]: %2")
+    .arg(axis0, 0, 'f', 2)
+    .arg(axis1, 0, 'f', 2));
+}
+
+void KeyJoyPanel::refreshCommandFromInput()
+{
+  const int linear_dir = (up_pressed_ ? 1 : 0) + (down_pressed_ ? -1 : 0);
+  const int angular_dir = (left_pressed_ ? 1 : 0) + (right_pressed_ ? -1 : 0);
+
+  setCommand(static_cast<double>(linear_dir),
+    static_cast<double>(angular_dir));
+}
+
+void KeyJoyPanel::keyPressEvent(QKeyEvent * event)
+{
+  if (!event || event->isAutoRepeat()) {
+    return;
+  }
+
+  switch (event->key()) {
+    case Qt::Key_Up:
+      up_pressed_ = true;
+      break;
+    case Qt::Key_Down:
+      down_pressed_ = true;
+      break;
+    case Qt::Key_Left:
+      left_pressed_ = true;
+      break;
+    case Qt::Key_Right:
+      right_pressed_ = true;
+      break;
+    default:
+      rviz_common::Panel::keyPressEvent(event);
+      return;
+  }
+
+  refreshCommandFromInput();
+}
+
+void KeyJoyPanel::keyReleaseEvent(QKeyEvent * event)
+{
+  if (!event || event->isAutoRepeat()) {
+    return;
+  }
+
+  switch (event->key()) {
+    case Qt::Key_Up:
+      up_pressed_ = false;
+      break;
+    case Qt::Key_Down:
+      down_pressed_ = false;
+      break;
+    case Qt::Key_Left:
+      left_pressed_ = false;
+      break;
+    case Qt::Key_Right:
+      right_pressed_ = false;
+      break;
+    default:
+      rviz_common::Panel::keyReleaseEvent(event);
+      return;
+  }
+
+  refreshCommandFromInput();
+}
+
+void KeyJoyPanel::mousePressEvent(QMouseEvent * event)
+{
+  setFocus(Qt::MouseFocusReason);
+  rviz_common::Panel::mousePressEvent(event);
+}
+
 }  // namespace rviz2_teleop_plugin
 
 PLUGINLIB_EXPORT_CLASS(rviz2_teleop_plugin::KeyTeleopPanel, rviz_common::Panel)
 PLUGINLIB_EXPORT_CLASS(rviz2_teleop_plugin::PadTeleopPanel, rviz_common::Panel)
+PLUGINLIB_EXPORT_CLASS(rviz2_teleop_plugin::KeyJoyPanel, rviz_common::Panel)
