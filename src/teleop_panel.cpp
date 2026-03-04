@@ -105,6 +105,48 @@ void TeleopPanelBase::onInitialize()
   updatePublisher();
 }
 
+void TeleopPanelBase::load(const rviz_common::Config & config)
+{
+  rviz_common::Panel::load(config);
+
+  QString topic_value;
+  if (config.mapGetString("Topic", &topic_value)) {
+    topic_ = topic_value.trimmed().isEmpty() ? std::string("cmd_vel") : topic_value.toStdString();
+  }
+
+  float publish_rate_value = static_cast<float>(publish_rate_hz_);
+  if (config.mapGetFloat("PublishRateHz", &publish_rate_value)) {
+    publish_rate_hz_ = std::max(1.0, static_cast<double>(publish_rate_value));
+  }
+
+  float max_linear_value = static_cast<float>(max_linear_);
+  if (config.mapGetFloat("MaxLinear", &max_linear_value)) {
+    max_linear_ = std::max(0.0, static_cast<double>(max_linear_value));
+  }
+
+  float max_angular_value = static_cast<float>(max_angular_);
+  if (config.mapGetFloat("MaxAngular", &max_angular_value)) {
+    max_angular_ = std::max(0.0, static_cast<double>(max_angular_value));
+  }
+
+  topic_edit_->setText(QString::fromStdString(topic_));
+  publish_rate_spin_->setValue(publish_rate_hz_);
+  max_linear_spin_->setValue(max_linear_);
+  max_angular_spin_->setValue(max_angular_);
+  refreshCommandFromInput();
+  updatePublishRate();
+  updatePublisher();
+}
+
+void TeleopPanelBase::save(rviz_common::Config config) const
+{
+  rviz_common::Panel::save(config);
+  config.mapSetValue("Topic", QString::fromStdString(topic_));
+  config.mapSetValue("PublishRateHz", publish_rate_hz_);
+  config.mapSetValue("MaxLinear", max_linear_);
+  config.mapSetValue("MaxAngular", max_angular_);
+}
+
 void TeleopPanelBase::publishCurrent()
 {
   if (!publisher_) {
@@ -351,6 +393,34 @@ void KeyJoyPanel::onInitialize()
     node_ = ros_node->get_raw_node();
   }
   updatePublisher();
+}
+
+void KeyJoyPanel::load(const rviz_common::Config & config)
+{
+  rviz_common::Panel::load(config);
+
+  QString topic_value;
+  if (config.mapGetString("Topic", &topic_value)) {
+    topic_ = topic_value.trimmed().isEmpty() ? std::string("/joy") : topic_value.toStdString();
+  }
+
+  float publish_rate_value = static_cast<float>(publish_rate_hz_);
+  if (config.mapGetFloat("PublishRateHz", &publish_rate_value)) {
+    publish_rate_hz_ = std::max(1.0, static_cast<double>(publish_rate_value));
+  }
+
+  topic_edit_->setText(QString::fromStdString(topic_));
+  publish_rate_spin_->setValue(publish_rate_hz_);
+  refreshCommandFromInput();
+  updatePublishRate();
+  updatePublisher();
+}
+
+void KeyJoyPanel::save(rviz_common::Config config) const
+{
+  rviz_common::Panel::save(config);
+  config.mapSetValue("Topic", QString::fromStdString(topic_));
+  config.mapSetValue("PublishRateHz", publish_rate_hz_);
 }
 
 void KeyJoyPanel::updatePublisher()
@@ -634,6 +704,34 @@ void ScreenJoyPanel::onInitialize()
   updatePublisher();
 }
 
+void ScreenJoyPanel::load(const rviz_common::Config & config)
+{
+  rviz_common::Panel::load(config);
+
+  QString topic_value;
+  if (config.mapGetString("Topic", &topic_value)) {
+    topic_ = topic_value.trimmed().isEmpty() ? std::string("/joy") : topic_value.toStdString();
+  }
+
+  float publish_rate_value = static_cast<float>(publish_rate_hz_);
+  if (config.mapGetFloat("PublishRateHz", &publish_rate_value)) {
+    publish_rate_hz_ = std::max(1.0, static_cast<double>(publish_rate_value));
+  }
+
+  topic_edit_->setText(QString::fromStdString(topic_));
+  publish_rate_spin_->setValue(publish_rate_hz_);
+  updateStatusLabel();
+  updatePublishRate();
+  updatePublisher();
+}
+
+void ScreenJoyPanel::save(rviz_common::Config config) const
+{
+  rviz_common::Panel::save(config);
+  config.mapSetValue("Topic", QString::fromStdString(topic_));
+  config.mapSetValue("PublishRateHz", publish_rate_hz_);
+}
+
 void ScreenJoyPanel::onAxisChanged(float axis_x, float axis_y, bool dragging)
 {
   setCommand(axis_x, axis_y, dragging);
@@ -676,7 +774,7 @@ void ScreenJoyPanel::setCommand(float axis_x, float axis_y, bool dragging)
 {
   dragging_ = dragging;
   last_msg_ = sensor_msgs::msg::Joy();
-  last_msg_.axes = {axis_x, axis_y};
+  last_msg_.axes = {-axis_x, axis_y};
   updateStatusLabel();
 }
 

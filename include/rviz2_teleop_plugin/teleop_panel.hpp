@@ -31,6 +31,8 @@ public:
   explicit TeleopPanelBase(QWidget * parent = nullptr);
 
   void onInitialize() override;
+  void load(const rviz_common::Config & config) override;
+  void save(rviz_common::Config config) const override;
 
 protected:
   void updatePublisher();
@@ -100,6 +102,8 @@ public:
   explicit KeyJoyPanel(QWidget * parent = nullptr);
 
   void onInitialize() override;
+  void load(const rviz_common::Config & config) override;
+  void save(rviz_common::Config config) const override;
 
 protected:
   void keyPressEvent(QKeyEvent * event) override;
@@ -170,6 +174,8 @@ public:
   explicit ScreenJoyPanel(QWidget * parent = nullptr);
 
   void onInitialize() override;
+  void load(const rviz_common::Config & config) override;
+  void save(rviz_common::Config config) const override;
 
 private slots:
   void onAxisChanged(float axis_x, float axis_y, bool dragging);
