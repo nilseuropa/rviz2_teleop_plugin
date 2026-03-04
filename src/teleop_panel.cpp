@@ -96,6 +96,13 @@ TeleopPanelBase::TeleopPanelBase(QWidget * parent)
   updatePublishRate();
 }
 
+TeleopPanelBase::~TeleopPanelBase()
+{
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+}
+
 void TeleopPanelBase::onInitialize()
 {
   auto ros_node = getDisplayContext()->getRosNodeAbstraction().lock();
@@ -103,6 +110,31 @@ void TeleopPanelBase::onInitialize()
     node_ = ros_node->get_raw_node();
   }
   updatePublisher();
+}
+
+void TeleopPanelBase::showEvent(QShowEvent * event)
+{
+  publishing_active_ = true;
+  updatePublishRate();
+  rviz_common::Panel::showEvent(event);
+}
+
+void TeleopPanelBase::hideEvent(QHideEvent * event)
+{
+  publishing_active_ = false;
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+  rviz_common::Panel::hideEvent(event);
+}
+
+void TeleopPanelBase::closeEvent(QCloseEvent * event)
+{
+  publishing_active_ = false;
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+  rviz_common::Panel::closeEvent(event);
 }
 
 void TeleopPanelBase::load(const rviz_common::Config & config)
@@ -168,6 +200,11 @@ void TeleopPanelBase::updatePublisher()
 void TeleopPanelBase::updatePublishRate()
 {
   if (!publish_timer_) {
+    return;
+  }
+
+  if (!publishing_active_) {
+    publish_timer_->stop();
     return;
   }
 
@@ -386,6 +423,13 @@ KeyJoyPanel::KeyJoyPanel(QWidget * parent)
   last_msg_.axes = {0.0f, 0.0f};
 }
 
+KeyJoyPanel::~KeyJoyPanel()
+{
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+}
+
 void KeyJoyPanel::onInitialize()
 {
   auto ros_node = getDisplayContext()->getRosNodeAbstraction().lock();
@@ -393,6 +437,31 @@ void KeyJoyPanel::onInitialize()
     node_ = ros_node->get_raw_node();
   }
   updatePublisher();
+}
+
+void KeyJoyPanel::showEvent(QShowEvent * event)
+{
+  publishing_active_ = true;
+  updatePublishRate();
+  rviz_common::Panel::showEvent(event);
+}
+
+void KeyJoyPanel::hideEvent(QHideEvent * event)
+{
+  publishing_active_ = false;
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+  rviz_common::Panel::hideEvent(event);
+}
+
+void KeyJoyPanel::closeEvent(QCloseEvent * event)
+{
+  publishing_active_ = false;
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+  rviz_common::Panel::closeEvent(event);
 }
 
 void KeyJoyPanel::load(const rviz_common::Config & config)
@@ -447,6 +516,11 @@ void KeyJoyPanel::publishCurrent()
 void KeyJoyPanel::updatePublishRate()
 {
   if (!publish_timer_) {
+    return;
+  }
+
+  if (!publishing_active_) {
+    publish_timer_->stop();
     return;
   }
 
@@ -695,6 +769,13 @@ ScreenJoyPanel::ScreenJoyPanel(QWidget * parent)
   last_msg_.axes = {0.0f, 0.0f};
 }
 
+ScreenJoyPanel::~ScreenJoyPanel()
+{
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+}
+
 void ScreenJoyPanel::onInitialize()
 {
   auto ros_node = getDisplayContext()->getRosNodeAbstraction().lock();
@@ -702,6 +783,31 @@ void ScreenJoyPanel::onInitialize()
     node_ = ros_node->get_raw_node();
   }
   updatePublisher();
+}
+
+void ScreenJoyPanel::showEvent(QShowEvent * event)
+{
+  publishing_active_ = true;
+  updatePublishRate();
+  rviz_common::Panel::showEvent(event);
+}
+
+void ScreenJoyPanel::hideEvent(QHideEvent * event)
+{
+  publishing_active_ = false;
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+  rviz_common::Panel::hideEvent(event);
+}
+
+void ScreenJoyPanel::closeEvent(QCloseEvent * event)
+{
+  publishing_active_ = false;
+  if (publish_timer_) {
+    publish_timer_->stop();
+  }
+  rviz_common::Panel::closeEvent(event);
 }
 
 void ScreenJoyPanel::load(const rviz_common::Config & config)
@@ -761,6 +867,11 @@ void ScreenJoyPanel::publishCurrent()
 void ScreenJoyPanel::updatePublishRate()
 {
   if (!publish_timer_) {
+    return;
+  }
+
+  if (!publishing_active_) {
+    publish_timer_->stop();
     return;
   }
 

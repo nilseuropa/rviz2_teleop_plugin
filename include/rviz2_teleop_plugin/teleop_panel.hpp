@@ -21,6 +21,9 @@ class QPushButton;
 class QVBoxLayout;
 class QGridLayout;
 class QPaintEvent;
+class QShowEvent;
+class QHideEvent;
+class QCloseEvent;
 
 namespace rviz2_teleop_plugin
 {
@@ -29,12 +32,17 @@ class TeleopPanelBase : public rviz_common::Panel
 {
 public:
   explicit TeleopPanelBase(QWidget * parent = nullptr);
+  ~TeleopPanelBase() override;
 
   void onInitialize() override;
   void load(const rviz_common::Config & config) override;
   void save(rviz_common::Config config) const override;
 
 protected:
+  void showEvent(QShowEvent * event) override;
+  void hideEvent(QHideEvent * event) override;
+  void closeEvent(QCloseEvent * event) override;
+
   void updatePublisher();
   void publishCurrent();
   void updatePublishRate();
@@ -57,6 +65,7 @@ protected:
   double max_linear_ = 0.5;
   double max_angular_ = 1.0;
   double publish_rate_hz_ = 10.0;
+  bool publishing_active_ = true;
 
   geometry_msgs::msg::Twist last_msg_{};
 };
@@ -100,12 +109,17 @@ class KeyJoyPanel : public rviz_common::Panel
 {
 public:
   explicit KeyJoyPanel(QWidget * parent = nullptr);
+  ~KeyJoyPanel() override;
 
   void onInitialize() override;
   void load(const rviz_common::Config & config) override;
   void save(rviz_common::Config config) const override;
 
 protected:
+  void showEvent(QShowEvent * event) override;
+  void hideEvent(QHideEvent * event) override;
+  void closeEvent(QCloseEvent * event) override;
+
   void keyPressEvent(QKeyEvent * event) override;
   void keyReleaseEvent(QKeyEvent * event) override;
   void mousePressEvent(QMouseEvent * event) override;
@@ -129,6 +143,7 @@ private:
 
   std::string topic_ = "/joy";
   double publish_rate_hz_ = 10.0;
+  bool publishing_active_ = true;
 
   sensor_msgs::msg::Joy last_msg_{};
 
@@ -172,6 +187,7 @@ class ScreenJoyPanel : public rviz_common::Panel
 
 public:
   explicit ScreenJoyPanel(QWidget * parent = nullptr);
+  ~ScreenJoyPanel() override;
 
   void onInitialize() override;
   void load(const rviz_common::Config & config) override;
@@ -181,6 +197,10 @@ private slots:
   void onAxisChanged(float axis_x, float axis_y, bool dragging);
 
 private:
+  void showEvent(QShowEvent * event) override;
+  void hideEvent(QHideEvent * event) override;
+  void closeEvent(QCloseEvent * event) override;
+
   void updatePublisher();
   void publishCurrent();
   void updatePublishRate();
@@ -199,6 +219,7 @@ private:
 
   std::string topic_ = "/joy";
   double publish_rate_hz_ = 10.0;
+  bool publishing_active_ = true;
   bool dragging_ = false;
 
   sensor_msgs::msg::Joy last_msg_{};
