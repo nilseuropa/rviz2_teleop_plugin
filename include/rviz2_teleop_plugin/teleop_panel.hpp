@@ -24,6 +24,7 @@ class QPaintEvent;
 class QShowEvent;
 class QHideEvent;
 class QCloseEvent;
+class QCheckBox;
 
 namespace rviz2_teleop_plugin
 {
@@ -55,6 +56,7 @@ protected:
   QDoubleSpinBox * max_linear_spin_{};
   QDoubleSpinBox * max_angular_spin_{};
   QDoubleSpinBox * publish_rate_spin_{};
+  QCheckBox * publishing_enabled_check_{};
   QLabel * status_label_{};
   QTimer * publish_timer_{};
 
@@ -65,6 +67,7 @@ protected:
   double max_linear_ = 0.5;
   double max_angular_ = 1.0;
   double publish_rate_hz_ = 10.0;
+  bool publishing_enabled_ = true;
   bool publishing_active_ = true;
 
   geometry_msgs::msg::Twist last_msg_{};
@@ -135,6 +138,7 @@ private:
   QVBoxLayout * main_layout_{};
   QLineEdit * topic_edit_{};
   QDoubleSpinBox * publish_rate_spin_{};
+  QCheckBox * publishing_enabled_check_{};
   QLabel * status_label_{};
   QTimer * publish_timer_{};
 
@@ -143,6 +147,7 @@ private:
 
   std::string topic_ = "/joy";
   double publish_rate_hz_ = 10.0;
+  bool publishing_enabled_ = true;
   bool publishing_active_ = true;
 
   sensor_msgs::msg::Joy last_msg_{};
@@ -210,6 +215,7 @@ private:
   QVBoxLayout * main_layout_{};
   QLineEdit * topic_edit_{};
   QDoubleSpinBox * publish_rate_spin_{};
+  QCheckBox * publishing_enabled_check_{};
   QLabel * status_label_{};
   QTimer * publish_timer_{};
   JoystickWidget * joystick_{};
@@ -219,6 +225,7 @@ private:
 
   std::string topic_ = "/joy";
   double publish_rate_hz_ = 10.0;
+  bool publishing_enabled_ = true;
   bool publishing_active_ = true;
   bool dragging_ = false;
 

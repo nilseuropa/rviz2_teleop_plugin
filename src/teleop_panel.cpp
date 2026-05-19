@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -64,6 +65,10 @@ TeleopPanelBase::TeleopPanelBase(QWidget * parent)
   rate_row->addWidget(publish_rate_spin_);
   main_layout_->addLayout(rate_row);
 
+  publishing_enabled_check_ = new QCheckBox("Publishing enabled");
+  publishing_enabled_check_->setChecked(publishing_enabled_);
+  main_layout_->addWidget(publishing_enabled_check_);
+
   status_label_ = new QLabel("Click here and use arrow keys");
   main_layout_->addWidget(status_label_);
 
@@ -89,6 +94,12 @@ TeleopPanelBase::TeleopPanelBase(QWidget * parent)
   connect(publish_rate_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) {
     publish_rate_hz_ = value;
     updatePublishRate();
+  });
+
+  connect(publishing_enabled_check_, &QCheckBox::toggled, this, [this](bool checked) {
+    publishing_enabled_ = checked;
+    updatePublishRate();
+    updateStatusLabel();
   });
 
   publish_timer_ = new QTimer(this);
@@ -161,8 +172,11 @@ void TeleopPanelBase::load(const rviz_common::Config & config)
     max_angular_ = std::max(0.0, static_cast<double>(max_angular_value));
   }
 
+  config.mapGetBool("PublishingEnabled", &publishing_enabled_);
+
   topic_edit_->setText(QString::fromStdString(topic_));
   publish_rate_spin_->setValue(publish_rate_hz_);
+  publishing_enabled_check_->setChecked(publishing_enabled_);
   max_linear_spin_->setValue(max_linear_);
   max_angular_spin_->setValue(max_angular_);
   refreshCommandFromInput();
@@ -177,11 +191,12 @@ void TeleopPanelBase::save(rviz_common::Config config) const
   config.mapSetValue("PublishRateHz", publish_rate_hz_);
   config.mapSetValue("MaxLinear", max_linear_);
   config.mapSetValue("MaxAngular", max_angular_);
+  config.mapSetValue("PublishingEnabled", publishing_enabled_);
 }
 
 void TeleopPanelBase::publishCurrent()
 {
-  if (!publisher_) {
+  if (!publisher_ || !publishing_enabled_) {
     return;
   }
 
@@ -203,7 +218,7 @@ void TeleopPanelBase::updatePublishRate()
     return;
   }
 
-  if (!publishing_active_) {
+  if (!publishing_active_ || !publishing_enabled_) {
     publish_timer_->stop();
     return;
   }
@@ -230,7 +245,8 @@ void TeleopPanelBase::updateStatusLabel()
 
   status_label_->setText(QString("lin.x: %1  ang.z: %2")
     .arg(last_msg_.linear.x, 0, 'f', 2)
-    .arg(last_msg_.angular.z, 0, 'f', 2));
+    .arg(last_msg_.angular.z, 0, 'f', 2) +
+    (publishing_enabled_ ? QString() : QString("  (publishing disabled)")));
 }
 
 KeyTeleopPanel::KeyTeleopPanel(QWidget * parent)
@@ -399,6 +415,10 @@ KeyJoyPanel::KeyJoyPanel(QWidget * parent)
   rate_row->addWidget(publish_rate_spin_);
   main_layout_->addLayout(rate_row);
 
+  publishing_enabled_check_ = new QCheckBox("Publishing enabled");
+  publishing_enabled_check_->setChecked(publishing_enabled_);
+  main_layout_->addWidget(publishing_enabled_check_);
+
   status_label_ = new QLabel("Click here and use arrow keys");
   main_layout_->addWidget(status_label_);
 
@@ -415,6 +435,12 @@ KeyJoyPanel::KeyJoyPanel(QWidget * parent)
   connect(publish_rate_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) {
     publish_rate_hz_ = value;
     updatePublishRate();
+  });
+
+  connect(publishing_enabled_check_, &QCheckBox::toggled, this, [this](bool checked) {
+    publishing_enabled_ = checked;
+    updatePublishRate();
+    updateStatusLabel();
   });
 
   publish_timer_ = new QTimer(this);
@@ -478,8 +504,11 @@ void KeyJoyPanel::load(const rviz_common::Config & config)
     publish_rate_hz_ = std::max(1.0, static_cast<double>(publish_rate_value));
   }
 
+  config.mapGetBool("PublishingEnabled", &publishing_enabled_);
+
   topic_edit_->setText(QString::fromStdString(topic_));
   publish_rate_spin_->setValue(publish_rate_hz_);
+  publishing_enabled_check_->setChecked(publishing_enabled_);
   refreshCommandFromInput();
   updatePublishRate();
   updatePublisher();
@@ -490,6 +519,7 @@ void KeyJoyPanel::save(rviz_common::Config config) const
   rviz_common::Panel::save(config);
   config.mapSetValue("Topic", QString::fromStdString(topic_));
   config.mapSetValue("PublishRateHz", publish_rate_hz_);
+  config.mapSetValue("PublishingEnabled", publishing_enabled_);
 }
 
 void KeyJoyPanel::updatePublisher()
@@ -503,7 +533,7 @@ void KeyJoyPanel::updatePublisher()
 
 void KeyJoyPanel::publishCurrent()
 {
-  if (!publisher_) {
+  if (!publisher_ || !publishing_enabled_) {
     return;
   }
 
@@ -519,7 +549,7 @@ void KeyJoyPanel::updatePublishRate()
     return;
   }
 
-  if (!publishing_active_) {
+  if (!publishing_active_ || !publishing_enabled_) {
     publish_timer_->stop();
     return;
   }
@@ -547,7 +577,8 @@ void KeyJoyPanel::updateStatusLabel()
   const float axis1 = last_msg_.axes.size() > 1 ? last_msg_.axes[1] : 0.0f;
   status_label_->setText(QString("axis[0]: %1  axis[1]: %2")
     .arg(axis0, 0, 'f', 2)
-    .arg(axis1, 0, 'f', 2));
+    .arg(axis1, 0, 'f', 2) +
+    (publishing_enabled_ ? QString() : QString("  (publishing disabled)")));
 }
 
 void KeyJoyPanel::refreshCommandFromInput()
@@ -740,6 +771,10 @@ ScreenJoyPanel::ScreenJoyPanel(QWidget * parent)
   rate_row->addWidget(publish_rate_spin_);
   main_layout_->addLayout(rate_row);
 
+  publishing_enabled_check_ = new QCheckBox("Publishing enabled");
+  publishing_enabled_check_->setChecked(publishing_enabled_);
+  main_layout_->addWidget(publishing_enabled_check_);
+
   joystick_ = new JoystickWidget();
   main_layout_->addWidget(joystick_, 1);
 
@@ -758,6 +793,12 @@ ScreenJoyPanel::ScreenJoyPanel(QWidget * parent)
   connect(publish_rate_spin_, qOverload<double>(&QDoubleSpinBox::valueChanged), this, [this](double value) {
     publish_rate_hz_ = value;
     updatePublishRate();
+  });
+
+  connect(publishing_enabled_check_, &QCheckBox::toggled, this, [this](bool checked) {
+    publishing_enabled_ = checked;
+    updatePublishRate();
+    updateStatusLabel();
   });
 
   connect(joystick_, &JoystickWidget::axisChanged, this, &ScreenJoyPanel::onAxisChanged);
@@ -824,8 +865,11 @@ void ScreenJoyPanel::load(const rviz_common::Config & config)
     publish_rate_hz_ = std::max(1.0, static_cast<double>(publish_rate_value));
   }
 
+  config.mapGetBool("PublishingEnabled", &publishing_enabled_);
+
   topic_edit_->setText(QString::fromStdString(topic_));
   publish_rate_spin_->setValue(publish_rate_hz_);
+  publishing_enabled_check_->setChecked(publishing_enabled_);
   updateStatusLabel();
   updatePublishRate();
   updatePublisher();
@@ -836,6 +880,7 @@ void ScreenJoyPanel::save(rviz_common::Config config) const
   rviz_common::Panel::save(config);
   config.mapSetValue("Topic", QString::fromStdString(topic_));
   config.mapSetValue("PublishRateHz", publish_rate_hz_);
+  config.mapSetValue("PublishingEnabled", publishing_enabled_);
 }
 
 void ScreenJoyPanel::onAxisChanged(float axis_x, float axis_y, bool dragging)
@@ -854,7 +899,7 @@ void ScreenJoyPanel::updatePublisher()
 
 void ScreenJoyPanel::publishCurrent()
 {
-  if (!publisher_) {
+  if (!publisher_ || !publishing_enabled_) {
     return;
   }
 
@@ -870,7 +915,7 @@ void ScreenJoyPanel::updatePublishRate()
     return;
   }
 
-  if (!publishing_active_) {
+  if (!publishing_active_ || !publishing_enabled_) {
     publish_timer_->stop();
     return;
   }
@@ -900,7 +945,8 @@ void ScreenJoyPanel::updateStatusLabel()
   status_label_->setText(QString("axis[0]: %1  axis[1]: %2  dragging: %3")
     .arg(axis0, 0, 'f', 2)
     .arg(axis1, 0, 'f', 2)
-    .arg(dragging_ ? "yes" : "no"));
+    .arg(dragging_ ? "yes" : "no") +
+    (publishing_enabled_ ? QString() : QString("  (publishing disabled)")));
 }
 
 }  // namespace rviz2_teleop_plugin
